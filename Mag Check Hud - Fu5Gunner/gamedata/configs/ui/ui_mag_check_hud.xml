@@ -1,0 +1,26 @@
+<w>
+	<!-- NOTE: only count_text is the anchor now; the script places the other lines relative to it
+	     using a line spacing that follows the font-size setting (their y values below are ignored). -->
+	<!-- Mag check count text, bottom right. Screen is treated as 1024x768.
+	     y: smaller = higher. Right edge of the text sits at x + width (here 1000).
+	     align: l / c / r -->
+	<count_text x="0" y="660" width="1000" height="40">
+		<text font="letterica18" align="r" r="255" g="255" b="255" a="255" />
+	</count_text>
+	<!-- Chambered round line, directly under the count -->
+	<chamber_text x="0" y="685" width="1000" height="40">
+		<text font="letterica18" align="r" r="255" g="255" b="255" a="255" />
+	</chamber_text>
+	<!-- "Mixed Ammo" label, directly above the count -->
+	<mixed_text x="0" y="635" width="1000" height="40">
+		<text font="letterica18" align="r" r="255" g="255" b="255" a="255" />
+	</mixed_text>
+	<!-- Per-type breakdown ("12 AP / 18 FMJ"), same slot as the Mixed label (which moves up when this shows) -->
+	<breakdown_text x="0" y="635" width="1000" height="40">
+		<text font="letterica18" align="r" r="255" g="255" b="255" a="255" />
+	</breakdown_text>
+	<!-- "Next: FMJ > AP" firing-order line, under the chamber line -->
+	<next_text x="0" y="710" width="1000" height="40">
+		<text font="letterica18" align="r" r="255" g="255" b="255" a="255" />
+	</next_text>
+</w>

@@ -1,0 +1,642 @@
+-- Mag Check HUD
+-- While the Mags Redux AmmoCheck is running, shows  current/max TYPE  (e.g. 30/30 FMJ)
+-- on screen, colour-coded by round type (turns a low-ammo colour when the mag is nearly empty). The text goes away when the weapon is back in your hands.
+-- Hooks ammo_check_mcm.check_Ammo, so no Mags Redux files are edited.
+-- All settings live in the MCM page "Mag Check HUD" (defined in mag_check_hud_mcm.script;
+-- the defaults below are used without MCM).
+
+local MCM_ID = "mag_check_hud"
+
+----------------------------------------------------------------
+-- Settings (overwritten from MCM by apply_options)
+----------------------------------------------------------------
+local ENABLED             = true
+local USE_COLORS          = true
+local HIDE_CENTER_MESSAGE = true    -- hide the game's centre-screen "About Half, 5.56x45 AP" text
+local SHOW_CHAMBER_LINE   = true    -- second line: the round in the chamber, in its own colour
+local SHOW_CHAMBER_ALWAYS = false   -- false = only when it differs from the mag's next round
+local SHOW_MIXED_LABEL    = true    -- "Mixed Ammo" above the count when the mag holds >1 ammo type
+local HIDE_AFTER_MS       = 5000    -- safety timeout if the "weapon is back" check never triggers
+local OFFSET_X            = 0
+local OFFSET_Y            = 0
+local DEBUG_LOG           = false
+local SHOW_BREAKDOWN      = false   -- mixed mags: "12 AP / 18 FMJ" line (off by default)
+local SHOW_NEXT_ROUND     = false   -- "Next: FMJ > AP" firing-order line (off by default)
+local LOW_AMMO_COLOR      = true    -- colour the count line when the mag is nearly empty
+local LOW_AMMO_PCT        = 25      -- "low" = at or below this % of magazine capacity
+local FADE_ENABLED        = true    -- short fade in / out instead of popping on and off
+local FADE_MS             = 250
+local OPACITY             = 100     -- 20-100 %, applied to every HUD line
+local FONT_SIZE           = 2       -- 1 = small, 2 = medium (XML default), 3 = large
+
+local MIXED_LABEL = "Mixed Ammo"
+
+----------------------------------------------------------------
+-- Colours
+----------------------------------------------------------------
+local DEFAULT_COLOR = {255, 255, 255}   -- unknown / vanilla ammo
+
+-- Preset palette used by the MCM colour pickers (index = MCM value).
+-- Keep the order in sync with PRESET_NAMES in mag_check_hud_mcm.script.
+local PRESETS = {
+	{255, 255, 255},   -- 1  White
+	{255,  80,  80},   -- 2  Red
+	{255, 170,  40},   -- 3  Orange
+	{255, 220,  70},   -- 4  Yellow
+	{120, 255, 120},   -- 5  Green
+	{ 90, 255, 170},   -- 6  Mint
+	{ 90, 200, 255},   -- 7  Light Blue
+	{200, 130, 255},   -- 8  Purple
+	{255, 150, 200},   -- 9  Pink
+	{180, 180, 180},   -- 10 Grey
+}
+
+-- Default preset per round type (also the MCM defaults)
+local DEFAULT_PRESET = {
+	ap = 2, hp = 3, sp = 4, bt = 7, fmj = 1,
+	buck = 3, slug = 8, dart = 6, trace = 5, mixed = 4, low = 2,
+}
+local color_idx = {}   -- current choices, filled by apply_options
+
+-- First match wins; patterns are searched (plain text) in the ammo SECTION name.
+local ROUND_RULES = {
+	{ pattern = "_ap",    key = "ap" },
+	{ pattern = "_hp",    key = "hp" },
+	{ pattern = "_jhp",   key = "hp" },
+	{ pattern = "_ep",    key = "hp" },     -- EP counts as HP
+	{ pattern = "_sp",    key = "sp" },
+	{ pattern = "_pbp",   key = "sp" },
+	{ pattern = "_bt",    key = "bt" },
+	{ pattern = "_trace", key = "trace" },
+	{ pattern = "_buck",  key = "buck" },
+	{ pattern = "_slug",  key = "slug" },
+	{ pattern = "_dart",  key = "dart" },
+	{ pattern = "_fmj",   key = "fmj" },
+}
+
+-- Fallback: last word of the displayed ammo name (e.g. "5.56x45 EP" -> "EP")
+local NAME_RULES = {
+	AP = "ap", HP = "hp", JHP = "hp", EP = "hp", SP = "sp", PBP = "sp",
+	["+P"] = "sp", BT = "bt", FMJ = "fmj",
+}
+
+local function preset_color(key)
+	return PRESETS[color_idx[key] or DEFAULT_PRESET[key] or 1] or DEFAULT_COLOR
+end
+
+local function color_for_round(sec, name)
+	if not USE_COLORS then return DEFAULT_COLOR end
+	if sec then
+		local s = string.lower(tostring(sec))
+		for _, rule in ipairs(ROUND_RULES) do
+			if string.find(s, rule.pattern, 1, true) then
+				return preset_color(rule.key)
+			end
+		end
+	end
+	if name then
+		local last
+		for word in string.gmatch(tostring(name), "%S+") do last = word end
+		local key = last and NAME_RULES[string.upper(last)]
+		if key then return preset_color(key) end
+	end
+	return DEFAULT_COLOR
+end
+
+----------------------------------------------------------------
+-- State
+----------------------------------------------------------------
+local WINDOW = nil
+local active = false
+local started = 0
+local saw_hidden = false
+local suppress_msg = false      -- swallow the next centre message from AmmoCheck
+local suppress_until = 0
+
+----------------------------------------------------------------
+-- Text window
+----------------------------------------------------------------
+class "UICheckText" (CUIScriptWnd)
+
+function UICheckText:__init() super()
+	local xml = CScriptXmlInit()
+	xml:ParseFile("ui_mag_check_hud.xml")
+
+	self.text = xml:InitTextWnd("count_text", self)
+	self.text2 = xml:InitTextWnd("chamber_text", self)
+	self.mixed = xml:InitTextWnd("mixed_text", self)
+	self.bd = xml:InitTextWnd("breakdown_text", self)
+	self.nextr = xml:InitTextWnd("next_text", self)
+	self.text:SetText("")
+	self.text2:SetText("")
+	self.mixed:SetText("")
+	self.bd:SetText("")
+	self.nextr:SetText("")
+
+	-- current colour per line (alpha is applied later: opacity setting x fade) and line slot
+	-- relative to the count line (so lines close up instead of leaving gaps)
+	self.cols = {}
+	self.slots = { text = 0, bd = -1, mixed = -1, text2 = 1, nextr = 2 }
+
+	-- remember XML positions so MCM offsets are applied on top of them
+	self.base = {}
+	for _, name in ipairs({ "text", "text2", "mixed", "bd", "nextr" }) do
+		local p = self[name]:GetWndPos()
+		self.base[name] = { x = p.x, y = p.y }
+	end
+end
+
+function UICheckText:__finalize()
+end
+
+local LINES = { "text", "text2", "mixed", "bd", "nextr" }
+
+-- Font per size setting; the first function that exists in this game build is used.
+-- Medium (letterica18) is what the XML already uses.
+local FONT_FUNCS = {
+	{ "GetFontLetterica16Russian", "GetFontLetterica16" },
+	{ "GetFontLetterica18Russian", "GetFontLetterica18" },
+	{ "GetFontLetterica25" },
+}
+local LINE_HEIGHTS = { 22, 25, 33 }   -- line spacing per size
+local applied_font = 2
+
+-- fade state: fade_factor 0..1 multiplies the alpha of every line
+local fade_factor = 0
+local fade_dir = 0        -- 1 = fading in, -1 = fading out, 0 = idle
+local fade_from = 0
+local fade_start = 0
+
+local function apply_positions()
+	if not WINDOW then return end
+	local line_h = LINE_HEIGHTS[FONT_SIZE] or 25
+	local base_y = WINDOW.base.text.y
+	for name, base in pairs(WINDOW.base) do
+		local ctrl = WINDOW[name]
+		local pos = ctrl:GetWndPos()
+		pos.x = base.x + OFFSET_X
+		pos.y = base_y + (WINDOW.slots[name] or 0) * line_h + OFFSET_Y
+		ctrl:SetWndPos(pos)
+	end
+end
+
+local function apply_font()
+	if not WINDOW or FONT_SIZE == applied_font then return end
+	local font
+	for _, fname in ipairs(FONT_FUNCS[FONT_SIZE] or {}) do
+		local okf, fn = pcall(function() return _G[fname] end)
+		if okf and type(fn) == "function" then
+			local okc, f = pcall(fn)
+			if okc and f then
+				font = f
+				break
+			end
+		end
+	end
+	if not font then
+		if DEBUG_LOG then printf("[Mag Check HUD] no font function found for size %d", FONT_SIZE) end
+		return
+	end
+	for _, name in ipairs(LINES) do
+		local ctrl = WINDOW[name]
+		pcall(function() ctrl:SetFont(font) end)
+	end
+	applied_font = FONT_SIZE
+	if DEBUG_LOG then printf("[Mag Check HUD] font size set to %d", FONT_SIZE) end
+end
+
+local function apply_colors()
+	if not WINDOW then return end
+	local a = math.floor(255 * (OPACITY / 100) * fade_factor + 0.5)
+	if a < 0 then a = 0 elseif a > 255 then a = 255 end
+	for _, name in ipairs(LINES) do
+		local c = WINDOW.cols[name]
+		if c then
+			WINDOW[name]:SetTextColor(GetARGB(a, c[1], c[2], c[3]))
+		end
+	end
+end
+
+local function get_window()
+	if not WINDOW then
+		WINDOW = UICheckText()
+		get_hud():AddDialogToRender(WINDOW)
+		applied_font = 2          -- a fresh window uses the XML font
+		apply_font()
+		apply_positions()
+	end
+	return WINDOW
+end
+
+local function set_line(name, str, color)
+	local ctrl = WINDOW[name]
+	if str and str ~= "" then
+		ctrl:SetText(str)
+		WINDOW.cols[name] = color or DEFAULT_COLOR
+	else
+		ctrl:SetText("")
+		WINDOW.cols[name] = nil
+	end
+end
+
+local function clear_lines()
+	if not WINDOW then return end
+	for _, name in ipairs(LINES) do
+		set_line(name, nil)
+	end
+end
+
+local function show_text(str, color, str2, color2, mixed, bd, nxt, nxt_color)
+	local wnd = get_window()
+	local mixed_color = USE_COLORS and preset_color("mixed") or DEFAULT_COLOR
+
+	set_line("text", str, color)
+	set_line("text2", str2, color2)
+	set_line("mixed", mixed and MIXED_LABEL or nil, mixed_color)
+	set_line("bd", bd, mixed_color)
+	set_line("nextr", nxt, nxt_color)
+
+	-- close up gaps: the breakdown takes the slot just above the count and pushes the label
+	-- up; the next-round line sits under the chamber line, or moves up into its slot
+	wnd.slots = {
+		text = 0,
+		bd = -1,
+		mixed = bd and -2 or -1,
+		text2 = 1,
+		nextr = str2 and 2 or 1,
+	}
+	apply_positions()
+
+	if FADE_ENABLED then
+		fade_from = fade_factor
+		fade_dir = 1
+		fade_start = time_global()
+	else
+		fade_factor = 1
+		fade_dir = 0
+	end
+	apply_colors()
+
+	active = true
+	started = time_global()
+	saw_hidden = false
+end
+
+local function update_fade()
+	if fade_dir == 0 or not WINDOW then return end
+	local t = (time_global() - fade_start) / math.max(FADE_MS, 1)
+	if t > 1 then t = 1 end
+	if fade_dir == 1 then
+		fade_factor = fade_from + (1 - fade_from) * t
+		if t >= 1 then fade_dir = 0 end
+	else
+		fade_factor = fade_from * (1 - t)
+		if t >= 1 then
+			fade_dir = 0
+			fade_factor = 0
+			clear_lines()
+		end
+	end
+	apply_colors()
+end
+
+local function hide_text()
+	active = false
+	if not WINDOW then return end
+	if FADE_ENABLED and fade_factor > 0 then
+		fade_from = fade_factor
+		fade_dir = -1
+		fade_start = time_global()
+	else
+		clear_lines()
+		fade_factor = 0
+		fade_dir = 0
+	end
+end
+
+----------------------------------------------------------------
+-- Work out the text:  current/max
+----------------------------------------------------------------
+local function build_count(wpn)
+	if not wpn or not IsWeapon(wpn) then return nil end
+	if IsItem("fake_ammo_wpn", nil, wpn) then return nil end
+	if wpn:weapon_in_grenade_mode() or wpn:get_state() ~= 0 then return nil end
+
+	local cur = wpn:get_ammo_in_magazine()
+	if not cur then return nil end
+
+	local sec = wpn:section()
+	local max
+
+	if magazine_binder and magazine_binder.is_supported_weapon(sec) then
+		-- Mags Redux weapon: capacity comes from the loaded magazine
+		if not magazine_binder.get_mag_loaded then return nil end
+		local mag = magazine_binder.get_mag_loaded(wpn:id())
+		if not mag then return nil end
+		max = SYS_GetParam(2, mag.section, "max_mag_size")
+	else
+		-- Vanilla weapon: capacity comes from the weapon itself
+		max = SYS_GetParam(2, sec, "ammo_mag_size")
+	end
+
+	if not max or max == 0 then return nil end
+
+	if cur == max + 1 then
+		return max .. "+1/" .. max, max, max        -- round in the chamber
+	end
+	return cur .. "/" .. max, cur, max
+end
+
+-- Round entries in mag.loaded are normally section strings; be tolerant if they are tables
+local function round_key(entry)
+	if type(entry) == "table" then
+		return entry.section or entry.sec or entry[1] or entry
+	end
+	return entry
+end
+
+-- Rounds per ammo section in the loaded MAGAZINE (Mags Redux weapons only), and the number
+-- of different types. The round in the chamber is never counted: a mag of AP with one FMJ
+-- chambered is not "mixed". Returns nil when the info isn't available.
+local function mag_contents(wpn)
+	if not (magazine_binder and magazine_binder.get_mag_loaded) then return nil end
+	if not magazine_binder.is_supported_weapon(wpn:section()) then return nil end
+
+	local mag = magazine_binder.get_mag_loaded(wpn:id())
+	if not mag or not mag.loaded then return nil end
+
+	-- count rounds per ammo section
+	local counts, total = {}, 0
+	for i = 1, #mag.loaded do
+		local k = round_key(mag.loaded[i])
+		counts[k] = (counts[k] or 0) + 1
+		total = total + 1
+	end
+
+	-- If the list holds more rounds than the magazine itself (i.e. the chambered round is
+	-- included in it), take the chambered round back out before comparing.
+	local cur = wpn:get_ammo_in_magazine() or 0
+	local max = SYS_GetParam(2, mag.section, "max_mag_size") or 0
+	local in_mag = cur
+	if max > 0 and cur == max + 1 then in_mag = max end   -- chambered round sits on top of a full mag
+	if total > in_mag and magazines and magazines.get_sec_chambered then
+		local okc, chambered = pcall(magazines.get_sec_chambered, wpn)
+		if okc and chambered and counts[chambered] then
+			counts[chambered] = counts[chambered] - 1
+			if counts[chambered] <= 0 then counts[chambered] = nil end
+			total = total - 1
+		end
+	end
+
+	local kinds = 0
+	for _ in pairs(counts) do kinds = kinds + 1 end
+
+	if DEBUG_LOG then
+		local parts = {}
+		for k, n in pairs(counts) do parts[#parts + 1] = tostring(k) .. "=" .. n end
+		printf("[Mag Check HUD] mag contents: %s | kinds=%d total=%d cur=%s max=%s",
+			table.concat(parts, ", "), kinds, total, tostring(cur), tostring(max))
+	end
+
+	return counts, kinds
+end
+
+-- Last word of a displayed ammo name: "5.56x45 AP" -> "AP"
+local function type_word(name)
+	local last
+	for w in string.gmatch(tostring(name), "%S+") do last = w end
+	return last or tostring(name)
+end
+
+-- "18 FMJ / 12 AP" (largest group first)
+local function breakdown_string(counts, name_fn)
+	local list = {}
+	for sec, n in pairs(counts) do
+		local ok, nm = pcall(function() return game.translate_string(name_fn(sec)) end)
+		list[#list + 1] = { n = n, name = (ok and nm) and type_word(nm) or tostring(sec) }
+	end
+	table.sort(list, function(a, b)
+		if a.n ~= b.n then return a.n > b.n end
+		return a.name < b.name
+	end)
+	local parts = {}
+	for _, e in ipairs(list) do parts[#parts + 1] = e.n .. " " .. e.name end
+	return table.concat(parts, " / ")
+end
+
+----------------------------------------------------------------
+-- MCM
+----------------------------------------------------------------
+local function opt(key, default)
+	if ui_mcm then
+		local v = ui_mcm.get(MCM_ID .. "/" .. key)
+		if v ~= nil then return v end
+	end
+	return default
+end
+
+local COLOR_KEYS = { "ap", "hp", "sp", "bt", "fmj", "buck", "slug", "dart", "trace", "mixed", "low" }
+
+local function apply_options()
+	ENABLED             = opt("enabled", true)
+	USE_COLORS          = opt("use_colors", true)
+	HIDE_CENTER_MESSAGE = opt("hide_center_message", true)
+	SHOW_CHAMBER_LINE   = opt("show_chamber_line", true)
+	SHOW_CHAMBER_ALWAYS = opt("chamber_always", false)
+	SHOW_MIXED_LABEL    = opt("show_mixed_label", true)
+	HIDE_AFTER_MS       = (tonumber(opt("hide_after", 5)) or 5) * 1000
+	OFFSET_X            = tonumber(opt("offset_x", 0)) or 0
+	OFFSET_Y            = tonumber(opt("offset_y", 0)) or 0
+	DEBUG_LOG           = opt("debug_log", false)
+	SHOW_BREAKDOWN      = opt("show_breakdown", false)
+	SHOW_NEXT_ROUND     = opt("show_next_round", false)
+	LOW_AMMO_COLOR      = opt("low_ammo_color", true)
+	LOW_AMMO_PCT        = tonumber(opt("low_ammo_pct", 25)) or 25
+	FADE_ENABLED        = opt("fade", true)
+	FADE_MS             = tonumber(opt("fade_ms", 250)) or 250
+	OPACITY             = tonumber(opt("opacity", 100)) or 100
+	FONT_SIZE           = math.max(1, math.min(3, tonumber(opt("font_size", 2)) or 2))
+
+	for _, key in ipairs(COLOR_KEYS) do
+		color_idx[key] = tonumber(opt("color_" .. key, DEFAULT_PRESET[key])) or DEFAULT_PRESET[key]
+	end
+
+	apply_positions()
+	apply_font()
+	apply_colors()
+end
+
+----------------------------------------------------------------
+-- Callbacks
+----------------------------------------------------------------
+local function on_update()
+	update_fade()
+	if not active then return end
+
+	local holding = db.actor and db.actor:active_item() ~= nil
+	if not holding then
+		saw_hidden = true            -- weapon has been lowered
+	end
+
+	-- weapon lowered and now back in hand = mag is "put back"
+	if (saw_hidden and holding) or (time_global() - started > HIDE_AFTER_MS) then
+		hide_text()
+	end
+end
+
+local function on_net_destroy()
+	if WINDOW then
+		get_hud():RemoveDialogToRender(WINDOW)
+		WINDOW = nil
+	end
+	active = false
+	fade_factor = 0
+	fade_dir = 0
+end
+
+local function on_first_update()
+	apply_options()
+end
+
+function on_game_start()
+	-- Nil-guard: bail out quietly if Mags Redux (ammo_check_mcm) isn't installed
+	if not ammo_check_mcm or type(ammo_check_mcm.check_Ammo) ~= "function" then
+		printf("[Mag Check HUD] ammo_check_mcm.check_Ammo not found - Mags Redux missing? HUD disabled.")
+		return
+	end
+
+	apply_options()
+
+	local original_check = ammo_check_mcm.check_Ammo
+
+	ammo_check_mcm.check_Ammo = function(...)
+		if not ENABLED then
+			return original_check(...)
+		end
+
+		local wpn = db.actor and db.actor:active_item()
+		local count, cur_n, max_n = build_count(wpn)
+
+		-- Capture the exact round section AmmoCheck names in its own message, so the
+		-- HUD type/colour can never disagree with it. AmmoCheck builds its message
+		-- synchronously, so we only need to watch ui_item.get_sec_short_name briefly.
+		local captured
+		local orig_name = ui_item and ui_item.get_sec_short_name
+		if count and orig_name then
+			ui_item.get_sec_short_name = function(sec, ...)
+				captured = sec
+				return orig_name(sec, ...)
+			end
+		end
+
+		local ok, r1, r2, r3 = pcall(original_check, ...)
+
+		if count and orig_name then
+			ui_item.get_sec_short_name = orig_name    -- always restore
+		end
+
+		if ok and count then
+			local text = count
+			local mag_name
+			if captured then
+				local ok2, name = pcall(function()
+					return game.translate_string(orig_name(captured))
+				end)
+				if ok2 and name then
+					text = text .. " " .. name
+					mag_name = name
+				end
+				if DEBUG_LOG then
+					printf("[Mag Check HUD] mag round section: %s (%s)", tostring(captured), tostring(mag_name))
+				end
+			end
+
+			local function round_name(sec)
+				local okn, nm = pcall(function() return game.translate_string(orig_name(sec)) end)
+				if okn and nm then return nm end
+			end
+
+			-- Round actually sitting in the chamber (can differ from the mag's next round)
+			local chambered
+			if magazines and magazines.get_sec_chambered then
+				local okc, c = pcall(magazines.get_sec_chambered, wpn)
+				if okc then chambered = c end
+			end
+
+			local text2, color2
+			if SHOW_CHAMBER_LINE and chambered and (SHOW_CHAMBER_ALWAYS or chambered ~= captured) then
+				local cname = round_name(chambered)
+				if cname then
+					text2 = "Chamber: " .. cname
+					color2 = color_for_round(chambered, cname)
+					if DEBUG_LOG then
+						printf("[Mag Check HUD] chambered round section: %s (%s)", tostring(chambered), tostring(cname))
+					end
+				end
+			end
+
+			-- Mixed magazine info
+			local okm, counts, kinds = pcall(mag_contents, wpn)
+			local is_mixed = okm and counts ~= nil and kinds > 1
+			local bd
+			if SHOW_BREAKDOWN and is_mixed and orig_name then
+				local okb, str = pcall(breakdown_string, counts, orig_name)
+				if okb and str ~= "" then bd = str end
+			end
+
+			-- Firing order: chambered round first, then the magazine's next round
+			local nxt, nxt_color
+			if SHOW_NEXT_ROUND and orig_name then
+				local first = chambered or captured
+				if first then
+					local n1 = round_name(first)
+					if n1 then
+						nxt = "Next: " .. type_word(n1)
+						nxt_color = color_for_round(first, n1)
+						if chambered and captured and chambered ~= captured then
+							local n2 = round_name(captured)
+							if n2 then nxt = nxt .. " > " .. type_word(n2) end
+						end
+					end
+				end
+			end
+
+			-- Low-ammo colour overrides the round-type colour on the count line
+			local count_color = color_for_round(captured, mag_name)
+			if LOW_AMMO_COLOR and cur_n and max_n and max_n > 0 and (cur_n / max_n) * 100 <= LOW_AMMO_PCT then
+				count_color = preset_color("low")
+			end
+
+			show_text(text, count_color, text2, color2, SHOW_MIXED_LABEL and is_mixed, bd, nxt, nxt_color)
+
+			if HIDE_CENTER_MESSAGE then
+				suppress_msg = true
+				suppress_until = time_global() + 4000
+			end
+		end
+
+		if not ok then error(r1) end
+		return r1, r2, r3
+	end
+
+	-- Swallow AmmoCheck's centre-screen message (type 1) when our HUD is showing
+	if actor_menu and type(actor_menu.set_msg) == "function" then
+		local orig_set_msg = actor_menu.set_msg
+		actor_menu.set_msg = function(msg_type, ...)
+			if suppress_msg then
+				if time_global() > suppress_until then
+					suppress_msg = false
+				elseif msg_type == 1 then
+					suppress_msg = false
+					return
+				end
+			end
+			return orig_set_msg(msg_type, ...)
+		end
+	end
+
+	RegisterScriptCallback("actor_on_update", on_update)
+	RegisterScriptCallback("actor_on_net_destroy", on_net_destroy)
+	RegisterScriptCallback("actor_on_first_update", on_first_update)
+	RegisterScriptCallback("on_option_change", apply_options)
+end

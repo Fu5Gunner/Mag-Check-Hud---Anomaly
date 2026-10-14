@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="ui_mcm_mag_check_hud_title">
+		<text>Mag Check HUD</text>
+	</string>
+	<string id="ui_mm_title_mag_check_hud">
+		<text>Mag Check HUD</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_enabled">
+		<text>Enable Mag Check HUD</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_enabled_desc">
+		<text>Show the ammo count on screen during the Mags Redux ammo check.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_hide_center_message">
+		<text>Hide center-screen message</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_hide_center_message_desc">
+		<text>Hide the game's own 'About Half, 5.56x45 AP' message while this HUD is showing.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_show_chamber_line">
+		<text>Show chamber line</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_show_chamber_line_desc">
+		<text>Show a second line with the round currently in the chamber, in its own color.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_chamber_always">
+		<text>Always show chamber line</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_chamber_always_desc">
+		<text>Off: only show the chamber line when it differs from the magazine's next round.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_show_mixed_label">
+		<text>Show 'Mixed Ammo' label</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_show_mixed_label_desc">
+		<text>Show a 'Mixed Ammo' message above the count when the magazine holds more than one ammo type.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_hide_after">
+		<text>Hide timeout (seconds)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_hide_after_desc">
+		<text>Safety timeout: hide the text after this many seconds if the weapon-back check never triggers.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_offset_x">
+		<text>Horizontal offset</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_offset_x_desc">
+		<text>Move the HUD left (negative) or right (positive).</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_offset_y">
+		<text>Vertical offset</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_offset_y_desc">
+		<text>Move the HUD up (negative) or down (positive).</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_use_colors">
+		<text>Color-code round types</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_use_colors_desc">
+		<text>Color the text by round type. Off: everything is white.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_ap">
+		<text>Color: AP (armor piercing)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_ap_desc">
+		<text>Color used for AP (armor piercing).</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_hp">
+		<text>Color: HP / JHP / EP (hollow &amp; expansive)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_hp_desc">
+		<text>Color used for HP / JHP / EP (hollow &amp; expansive).</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_sp">
+		<text>Color: SP / +P (soft point)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_sp_desc">
+		<text>Color used for SP / +P (soft point).</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_bt">
+		<text>Color: BT (boat tail)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_bt_desc">
+		<text>Color used for BT (boat tail).</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_fmj">
+		<text>Color: FMJ</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_fmj_desc">
+		<text>Color used for FMJ.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_buck">
+		<text>Color: Buckshot</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_buck_desc">
+		<text>Color used for Buckshot.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_slug">
+		<text>Color: Slug</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_slug_desc">
+		<text>Color used for Slug.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_dart">
+		<text>Color: Dart</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_dart_desc">
+		<text>Color used for Dart.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_trace">
+		<text>Color: Tracer</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_trace_desc">
+		<text>Color used for Tracer.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_mixed">
+		<text>Color: 'Mixed Ammo' label</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_mixed_desc">
+		<text>Color used for 'Mixed Ammo' label.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_debug_log">
+		<text>Debug logging</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_debug_log_desc">
+		<text>Write the detected ammo section names to the game log (useful for adding new round types).</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_enabled_title">
+		<text>Enable Mag Check HUD</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_hide_center_message_title">
+		<text>Hide center-screen message</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_show_chamber_line_title">
+		<text>Show chamber line</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_chamber_always_title">
+		<text>Always show chamber line</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_show_mixed_label_title">
+		<text>Show 'Mixed Ammo' label</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_hide_after_title">
+		<text>Hide timeout (seconds)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_offset_x_title">
+		<text>Horizontal offset</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_offset_y_title">
+		<text>Vertical offset</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_use_colors_title">
+		<text>Color-code round types</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_ap_title">
+		<text>Color: AP (armor piercing)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_hp_title">
+		<text>Color: HP / JHP / EP (hollow &amp; expansive)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_sp_title">
+		<text>Color: SP / +P (soft point)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_bt_title">
+		<text>Color: BT (boat tail)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_fmj_title">
+		<text>Color: FMJ</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_buck_title">
+		<text>Color: Buckshot</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_slug_title">
+		<text>Color: Slug</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_dart_title">
+		<text>Color: Dart</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_trace_title">
+		<text>Color: Tracer</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_mixed_title">
+		<text>Color: 'Mixed Ammo' label</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_debug_log_title">
+		<text>Debug logging</text>
+	</string>
+	<string id="ui_mcm_menu_mag_check_hud">
+		<text>Mag Check HUD</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_show_breakdown">
+		<text>Show per-type breakdown</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_show_breakdown_title">
+		<text>Show per-type breakdown</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_show_breakdown_desc">
+		<text>On mixed magazines, show how many rounds of each type are loaded, e.g. '12 AP / 18 FMJ'. Off by default.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_show_next_round">
+		<text>Show next rounds line</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_show_next_round_title">
+		<text>Show next rounds line</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_show_next_round_desc">
+		<text>Show the firing order, e.g. 'Next: FMJ > AP' (chambered round first, then the magazine's next round). Off by default.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_low_ammo_color">
+		<text>Low-ammo colour</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_low_ammo_color_title">
+		<text>Low-ammo colour</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_low_ammo_color_desc">
+		<text>Turn the count line a warning colour when the magazine is nearly empty.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_low_ammo_pct">
+		<text>Low-ammo threshold (%)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_low_ammo_pct_title">
+		<text>Low-ammo threshold (%)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_low_ammo_pct_desc">
+		<text>The magazine counts as low at or below this percentage of its capacity.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_low">
+		<text>Color: low ammo</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_low_title">
+		<text>Color: low ammo</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_color_low_desc">
+		<text>Color used for the count line when the magazine is low.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_font_size">
+		<text>Font size</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_font_size_title">
+		<text>Font size</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_font_size_desc">
+		<text>Size of the HUD text. If a size has no effect, your game build may not expose that font; turn on Debug logging to check.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_opacity">
+		<text>Opacity (%)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_opacity_title">
+		<text>Opacity (%)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_opacity_desc">
+		<text>How opaque the HUD text is. 100 is fully solid.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_fade">
+		<text>Fade in / out</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_fade_title">
+		<text>Fade in / out</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_fade_desc">
+		<text>Fade the HUD in and out instead of popping on and off.</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_fade_ms">
+		<text>Fade duration (ms)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_fade_ms_title">
+		<text>Fade duration (ms)</text>
+	</string>
+	<string id="ui_mcm_mag_check_hud_fade_ms_desc">
+		<text>How long the fade takes, in milliseconds.</text>
+	</string>
+</string_table>

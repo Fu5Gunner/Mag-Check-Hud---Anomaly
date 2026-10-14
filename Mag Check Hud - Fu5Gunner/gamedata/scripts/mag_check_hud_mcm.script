@@ -1,0 +1,54 @@
+-- Mag Check HUD - MCM page
+-- MCM only discovers scripts whose filename ends in "_mcm.script", so the options page
+-- lives here. The settings are read by mag_check_hud.script via ui_mcm.get("mag_check_hud/<id>").
+-- Keep PRESET_NAMES / DEFAULT_PRESET / COLOR_KEYS in sync with mag_check_hud.script.
+
+local MCM_ID = "mag_check_hud"
+
+local PRESET_NAMES = { "White", "Red", "Orange", "Yellow", "Green", "Mint", "Light Blue", "Purple", "Pink", "Grey" }
+
+local DEFAULT_PRESET = {
+	ap = 2, hp = 3, sp = 4, bt = 7, fmj = 1,
+	buck = 3, slug = 8, dart = 6, trace = 5, mixed = 4, low = 2,
+}
+
+local COLOR_KEYS = { "ap", "hp", "sp", "bt", "fmj", "buck", "slug", "dart", "trace", "mixed", "low" }
+
+function on_mcm_load()
+	local preset_content = {}
+	for i, name in ipairs(PRESET_NAMES) do
+		preset_content[i] = { i, name }
+	end
+
+	local gr = {
+		{ id = "title", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_mag_check_hud_title", size = { 512, 50 }, spacing = 20 },
+
+		{ id = "enabled", type = "check", val = 1, def = true },
+		{ id = "hide_center_message", type = "check", val = 1, def = true },
+		{ id = "show_chamber_line", type = "check", val = 1, def = true },
+		{ id = "chamber_always", type = "check", val = 1, def = false },
+		{ id = "show_mixed_label", type = "check", val = 1, def = true },
+		{ id = "show_breakdown", type = "check", val = 1, def = false },
+		{ id = "show_next_round", type = "check", val = 1, def = false },
+		{ id = "low_ammo_color", type = "check", val = 1, def = true },
+		{ id = "low_ammo_pct", type = "track", val = 2, min = 5, max = 50, step = 5, def = 25 },
+		{ id = "hide_after", type = "track", val = 2, min = 1, max = 15, step = 0.5, def = 5 },
+		{ id = "offset_x", type = "track", val = 2, min = -1000, max = 1000, step = 5, def = 0 },
+		{ id = "offset_y", type = "track", val = 2, min = -700, max = 700, step = 5, def = 0 },
+		{ id = "font_size", type = "list", val = 2, def = 2, content = { { 1, "Small" }, { 2, "Medium" }, { 3, "Large" } }, no_str = true },
+		{ id = "opacity", type = "track", val = 2, min = 20, max = 100, step = 5, def = 100 },
+		{ id = "fade", type = "check", val = 1, def = true },
+		{ id = "fade_ms", type = "track", val = 2, min = 50, max = 1000, step = 50, def = 250 },
+
+		{ id = "use_colors", type = "check", val = 1, def = true },
+	}
+	for _, key in ipairs(COLOR_KEYS) do
+		gr[#gr + 1] = {
+			id = "color_" .. key, type = "list", val = 2, def = DEFAULT_PRESET[key],
+			content = preset_content, no_str = true,
+		}
+	end
+	gr[#gr + 1] = { id = "debug_log", type = "check", val = 1, def = false }
+
+	return { id = MCM_ID, sh = true, gr = gr }
+end
